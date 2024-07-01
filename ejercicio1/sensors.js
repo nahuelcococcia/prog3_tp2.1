@@ -1,4 +1,35 @@
-class Sensor {}
+class Sensor {
+    constructor(id, name, type, value, unit, updated_at) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+        this.value = value;
+        this.unit = unit;
+        this.updated_at = updated_at;
+    }
+
+    set updateValue(newValue) {
+        this.value = newValue;
+        this.updated_at = new Date().toISOString();
+    }
+
+    static get allowedTypes() {
+        return ["temperature", "humidity", "pressure"];
+    }
+
+    set type(type) {
+        if (Sensor.allowedTypes.includes(type)) {
+            this._type = type;
+        } else {
+            throw new Error(`Invalid sensor type: ${type}`);
+        }
+    }
+
+    get type() {
+        return this._type;
+    }
+}
+
 
 class SensorManager {
     constructor() {
@@ -26,14 +57,38 @@ class SensorManager {
                 default: // Valor por defecto si el tipo es desconocido
                     newValue = (Math.random() * 100).toFixed(2);
             }
-            sensor.updateValue = newValue;
+            sensor.value = newValue; // Corrige de updateValue a value
+            sensor.updated_at = new Date().toISOString();
             this.render();
         } else {
             console.error(`Sensor ID ${id} no encontrado`);
         }
     }
 
-    async loadSensors(url) {}
+    async loadSensors(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Error al cargar los sensores: ${response.statusText}`);
+            }
+            const sensorsData = await response.json();
+            sensorsData.forEach(sensorData => {
+                const sensor = new Sensor(
+                    sensorData.id,
+                    sensorData.name,
+                    sensorData.type,
+                    sensorData.value,
+                    sensorData.unit,
+                    sensorData.updated_at
+                );
+                this.addSensor(sensor);
+            });
+            this.render();
+        } catch (error) {
+            console.error('Error:', error);
+        }
+
+    }
 
     render() {
         const container = document.getElementById("sensor-container");
@@ -84,6 +139,7 @@ class SensorManager {
         });
     }
 }
+
 
 const monitor = new SensorManager();
 
